@@ -1,5 +1,6 @@
 from socket import socket, AF_INET, SOCK_STREAM
 from message import send_message, recv_message
+from threading import Thread
 
 
 def echo_message(sock):
@@ -18,7 +19,12 @@ def main(addr):
     while True:
         client, addr = sock.accept()
         print("Connection from ", addr)
-        echo_message(client)
+        Thread(
+            target=echo_message,
+            args=[
+                client,
+            ],
+        ).start()
 
 
 main(("localhost", 12345))
