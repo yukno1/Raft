@@ -1,0 +1,8 @@
+{
+    "editor.codeActionsOnSave": {
+    "source.fixAll.ruff": "explicit",
+    "source.organizeImports.ruff": "explicit"
+  },
+    "python.analysis.diagnosticsSource": "Pylance + Pyright",
+    "python.analysis.typeCheckingMode": "off"
+}
