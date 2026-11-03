@@ -31,6 +31,7 @@ class LightLogic:
         assert not (self.ns_color in {"G", "Y"} and self.ew_color in {"G", "Y"})
 
     # single point of event handling (internal dispatch)
+    # things consolidated in one place
     def handle_event(self, event: Event):
         match event:
             case Event.TICK:
@@ -82,6 +83,23 @@ class LightLogic:
                 self.clock = 0
 
         self.invariants()
+
+
+# Test concept. Fuzzing/random test
+# Goal: run thousands of random events hoping to violate an invariant check
+def fuzz_test(nsteps):
+    import random
+
+    logic = LightLogic()
+    while nsteps > 0:
+        r = random.random()
+        if r > 0.1:
+            logic.handle_event(Event.TICK)
+        elif r > 0.05:
+            logic.handle_event(Event.NS_BUTTON)
+        else:
+            logic.handle_event(Event.EW_BUTTON)
+        nsteps -= 1
 
 
 # configuration
