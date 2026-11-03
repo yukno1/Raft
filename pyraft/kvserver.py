@@ -36,6 +36,14 @@ class KVServer:
                 #     self.consensus_mod.commit(cmd)
                 # except NotLeader:
                 #     response = "go away"
+                """
+                lots of things happens in step 2:
+                - message timer
+                - timeout
+                - concurrency
+                - retry
+                - election
+                """
 
                 response = self.app.execute_command(cmd)  # step 3
                 send_message(sock, response.encode("utf-8"))  # step 4
