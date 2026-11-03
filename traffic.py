@@ -21,6 +21,7 @@ class LightLogic:
         self.ew_color = ew_color
         self.ns_button = ns_button  # ns button being pressed?
         self.ew_button = ew_button
+        self.invariants()
 
     def __repr__(self):
         return f"LightLogic({self.clock}, {self.ns_color}, {self.ew_color}, {self.ns_button}, {self.ew_button})"
@@ -115,10 +116,16 @@ class LightControl:
         self.sock = socket(AF_INET, SOCK_DGRAM)
         self.sock.bind(BUTTON)
         self.event_queue = queue.Queue()
+        self.prior_ew = None
+        self.prior_ns = None
 
     def display_colors(self):
-        self.sock.sendto(self.logic.ew_color.encode("utf-8"), EW_LIGHT)
-        self.sock.sendto(self.logic.ns_color.encode("utf-8"), NS_LIGHT)
+        if self.prior_ew != self.logic.ew_color:
+            self.sock.sendto(self.logic.ew_color.encode("utf-8"), EW_LIGHT)
+        if self.prior_ns != self.logic.ns_color:
+            self.sock.sendto(self.logic.ns_color.encode("utf-8"), NS_LIGHT)
+        self.prior_ew = self.logic.ew_color
+        self.prior_ns = self.logic.ns_color
 
     def start(self):
         threading.Thread(target=self.generate_ticks).start()
