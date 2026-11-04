@@ -17,6 +17,7 @@ class RaftNetNode:
     def __init__(self, nodenum: int):
         self.nodenum = nodenum
         self.incoming = queue.Queue()
+        self.outgoing = {}  # connection cache
 
     def send(self, dest: int, msg: bytes):
         """
@@ -28,13 +29,24 @@ class RaftNetNode:
         - any response/ack expected?
         - is message raw bytes?
         """
-        sock = socket(AF_INET, SOCK_STREAM)
+
+        # may be used by multi-thread
+
+        # in real, raft send messages thousand times per second
+        # this is like a cache prior channel
+        if dest not in self.outgoing:
+            sock = socket(AF_INET, SOCK_STREAM)
+            try:
+                sock.connect(raftconfig.SERVERS[dest])
+                self.outgoing[dest] = sock
+            except OSError:
+                return
         try:
-            sock.connect(raftconfig.SERVERS[dest])
-            message.send_message(sock, msg)
+            message.send_message(self.outgoing[dest], msg)
         except OSError:
-            # maybe network is dead or remote machine is dead
-            ...
+            # problem with sending, maybe network is dead or remote machine is dead.
+            # Discard connection
+            self.outgoing.pop(dest).close()
 
     def receive(self) -> bytes:
         """
