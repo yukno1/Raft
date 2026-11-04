@@ -32,9 +32,9 @@ class RaftServer:
             raw_msg = self.node.receive()
             msg = self.decode_msg(raw_msg)
             # decode?
-            response = self.logic.handle_msg(msg)
-            if response:
-                self.send(response)
+            outgoing = self.logic.handle_msg(msg)
+            for out in outgoing:
+                self.send(out)
 
         # outgoing messages or response?
 
@@ -45,7 +45,9 @@ class RaftServer:
                 continue
             dest, msg = cmd.split()
 
-            # not wait for response
+            # send ChatMessage to remote server
+            # will be received and handled by logic in run()
+            # ChatResponse is handled in run()
             self.send(ChatMessage(int(dest), self.node_num, msg))
 
     def start(self):
