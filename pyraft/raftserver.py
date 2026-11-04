@@ -32,14 +32,20 @@ class RaftServer:
             raw_msg = self.node.receive()
             msg = self.decode_msg(raw_msg)
             # decode?
-            self.logic.handle_msg(msg)
+            response = self.logic.handle_msg(msg)
+            if response:
+                self.send(response)
 
         # outgoing messages or response?
 
     def console(self):
         while True:
             cmd = input(f"Node {self.node_num} > ")
+            if not cmd:
+                continue
             dest, msg = cmd.split()
+
+            # not wait for response
             self.send(ChatMessage(int(dest), self.node_num, msg))
 
     def start(self):
