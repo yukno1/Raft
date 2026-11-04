@@ -1,16 +1,22 @@
 # Raft networking layer
 # different server nodes need to be able to communicate by
 # sending messages.
+import queue
 import threading
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
 
 import message
 import raftconfig
 
+# message encoding
+# what data format?
+# who is responsible for? network layer?
+
 
 class RaftNetNode:
     def __init__(self, nodenum: int):
         self.nodenum = nodenum
+        self.incoming = queue.Queue()
 
     def send(self, dest: int, msg: bytes):
         """
@@ -38,6 +44,7 @@ class RaftNetNode:
         - message can be sent any time.
         - wait when no messge available?
         """
+        return self.incoming.get()
 
     def _run_server(self):
         """
@@ -57,10 +64,14 @@ class RaftNetNode:
             self._receive_msg(client)
 
     def _receive_msgs(self, sock):
-        """receive as many as possible"""
+        """
+        receive as many as possible.
+        simply put messages on queue
+        """
         try:
             while True:
                 msg = message.recv_message(sock)
+                self.incoming.put(msg)
         except OSError:
             # client connection went away
             sock.close()
