@@ -46,6 +46,10 @@ class RaftNetNode:
         """
         return self.incoming.get()
 
+    def start(self):
+        threading.Thread(target=self._run_server).start()
+        print(f"Raft node: {self.nodenum} running")
+
     def _run_server(self):
         """
         each node operates as a server that must be able to
@@ -61,7 +65,6 @@ class RaftNetNode:
             client, addr = sock.accept()
             # have to receive messages from any node at any time
             threading.Thread(target=self._receive_msgs, args=[client]).start()
-            self._receive_msg(client)
 
     def _receive_msgs(self, sock):
         """
@@ -75,3 +78,9 @@ class RaftNetNode:
         except OSError:
             # client connection went away
             sock.close()
+
+
+if __name__ == "__main__":
+    node_num = int(input("Enter Node Number: "))
+    node = RaftNetNode(node_num)
+    node.start()
