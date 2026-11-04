@@ -3,7 +3,7 @@
 # sending messages.
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
 
-import config
+import pyraft.raftconfig as raftconfig
 import message
 
 
@@ -22,7 +22,7 @@ class RaftNetNode:
         - is message raw bytes?
         """
         sock = socket(AF_INET, SOCK_STREAM)
-        sock.connect(config.SERVERS[dest])
+        sock.connect(raftconfig.SERVERS[dest])
         message.send_message(sock, msg)
 
     def receive(self) -> bytes:
@@ -42,7 +42,7 @@ class RaftNetNode:
         sock = socket(AF_INET, SOCK_STREAM)
         # Silence "addr" in use error
         sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, True)
-        sock.bind(config.SERVERS[self.nodenum])
+        sock.bind(raftconfig.SERVERS[self.nodenum])
         sock.listen()
 
         while True:
