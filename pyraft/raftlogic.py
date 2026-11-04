@@ -58,3 +58,9 @@ class RaftLogic:
         print(msg)
 
     def handle_append_entries(self, msg: AppendEntries): ...
+
+
+def test_chat():
+    logic = RaftLogic(1)
+    resp = logic.handle_msg(ChatMessage(1, 2, "hi"))
+    assert resp == ChatResponse(2, 1, "hi")
