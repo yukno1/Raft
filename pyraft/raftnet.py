@@ -1,10 +1,11 @@
 # Raft networking layer
 # different server nodes need to be able to communicate by
 # sending messages.
+import threading
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
 
-import pyraft.raftconfig as raftconfig
 import message
+import raftconfig
 
 
 class RaftNetNode:
@@ -22,8 +23,12 @@ class RaftNetNode:
         - is message raw bytes?
         """
         sock = socket(AF_INET, SOCK_STREAM)
-        sock.connect(raftconfig.SERVERS[dest])
-        message.send_message(sock, msg)
+        try:
+            sock.connect(raftconfig.SERVERS[dest])
+            message.send_message(sock, msg)
+        except OSError:
+            # maybe network is dead or remote machine is dead
+            ...
 
     def receive(self) -> bytes:
         """
@@ -47,13 +52,15 @@ class RaftNetNode:
 
         while True:
             client, addr = sock.accept()
+            # have to receive messages from any node at any time
+            threading.Thread(target=self._receive_msgs, args=[client]).start()
             self._receive_msg(client)
 
-    def _receive_msg(self, sock):
+    def _receive_msgs(self, sock):
         """receive as many as possible"""
         try:
             while True:
                 msg = message.recv_message(sock)
         except OSError:
-            # client went away
+            # client connection went away
             sock.close()
