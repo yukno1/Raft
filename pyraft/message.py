@@ -7,7 +7,7 @@
 # many ways: high-level lib/framework, e.g., ZeroMQ or web api;
 # program using sockets or some low-level code
 
-def send_message(sock, msg: str):
+def send_message(sock, msg: bytes):
     size=b'%10d' % len(msg)
     sock.sendall(size)
     sock.sendall(msg)
@@ -17,7 +17,7 @@ def recv_exactly(sock, nbytes:int):
     while nbytes>0:
         chunk=sock.recv(nbytes)
         if chunk==b'':
-            raise IOError("Incomplete message")
+            raise OSError("Incomplete message")
         chunks.append(chunk)
         nbytes-=len(chunk)
     return b''.join(chunks)

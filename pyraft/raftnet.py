@@ -18,6 +18,9 @@ class RaftNetNode:
         self.nodenum = nodenum
         self.incoming = queue.Queue()
         self.outgoing = {}  # connection cache
+        # send() is also called from the console thread, so the cached
+        # sockets (and their framing) must be protected.
+        self._send_lock = threading.Lock()
 
     def send(self, dest: int, msg: bytes):
         """
@@ -29,26 +32,27 @@ class RaftNetNode:
         - any response/ack expected?
         - is message raw bytes?
         """
-
-        # may be used by multi-thread
-
-        # in real, raft send messages thousand times per second
-        # this is like a cache prior channel
-        if dest not in self.outgoing:
-            sock = socket(AF_INET, SOCK_STREAM)
+        with self._send_lock:
+            # in real, raft send messages thousand times per second
+            # this is like a cache prior channel
+            if dest not in self.outgoing:
+                sock = socket(AF_INET, SOCK_STREAM)
+                try:
+                    sock.connect(raftconfig.SERVERS[dest])
+                    self.outgoing[dest] = sock
+                except OSError:
+                    sock.close()
+                    return
             try:
-                sock.connect(raftconfig.SERVERS[dest])
-                self.outgoing[dest] = sock
+                message.send_message(self.outgoing[dest], msg)
             except OSError:
-                return
-        try:
-            message.send_message(self.outgoing[dest], msg)
-        except OSError:
-            # problem with sending, maybe network is dead or remote machine is dead.
-            # Discard connection
-            self.outgoing.pop(dest).close()
+                # problem with sending, maybe network is dead or remote machine is dead.
+                # Discard connection
+                sock = self.outgoing.pop(dest, None)
+                if sock is not None:
+                    sock.close()
 
-    def receive(self) -> bytes:
+    def receive(self, timeout=None):
         """
         receive message from any other nodes.\n
         Consideration:
@@ -56,10 +60,16 @@ class RaftNetNode:
         - message can be sent any time.
         - wait when no messge available?
         """
-        return self.incoming.get()
+        # Local events (ClientRequest, ...) are delivered on the same queue,
+        # so nothing here assumes the queue only holds raw bytes.
+        return self.incoming.get(timeout=timeout)
+
+    def deliver(self, event):
+        """Inject a local, non-network event into the server's event loop."""
+        self.incoming.put(event)
 
     def start(self):
-        threading.Thread(target=self._run_server).start()
+        threading.Thread(target=self._run_server, daemon=True).start()
         print(f"Raft node: {self.nodenum} running")
 
     def _run_server(self):
@@ -74,9 +84,11 @@ class RaftNetNode:
         sock.listen()
 
         while True:
-            client, addr = sock.accept()
+            client, _ = sock.accept()
             # have to receive messages from any node at any time
-            threading.Thread(target=self._receive_msgs, args=[client]).start()
+            threading.Thread(
+                target=self._receive_msgs, args=(client,), daemon=True
+            ).start()
 
     def _receive_msgs(self, sock):
         """
